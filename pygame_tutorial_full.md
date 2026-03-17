@@ -1,0 +1,251 @@
+# Pygame 튜토리얼 대화록
+
+---
+
+## 💬 사용자
+
+```python
+import pygame
+import sys
+pygame.init()
+screen = pygame.display.set_mode((800, 600))
+pygame.display.set_caption("My First Pygame")
+WHITE = (255, 255, 255)
+BLUE = (0, 0, 255)
+clock = pygame.time.Clock()
+running = True
+while running:
+    for event in pygame.event.get():
+        if event.type == pygame.QUIT:
+            running = False
+    screen.fill(WHITE)
+    pygame.draw.circle(screen, BLUE, (400, 300), 50)
+    pygame.display.flip()
+    clock.tick()
+pygame.quit()
+sys.exit()
+```
+
+> 이 코드는 pygame 코드야 이걸 처음 프로그래밍 하는사람도 이해할수있게 설명해줘
+
+---
+
+## 🤖 답변
+
+### Pygame 코드 설명 🎮
+
+이 코드는 **흰 배경에 파란 원이 그려진 창**을 띄우는 프로그램입니다.
+
+#### 1️⃣ 준비 단계 (게임 엔진 시작)
+
+```python
+import pygame
+import sys
+pygame.init()
+```
+- `import pygame` → pygame이라는 **게임 만들기 도구**를 불러옵니다
+- `import sys` → 프로그램을 **종료**할 때 필요한 도구입니다
+- `pygame.init()` → pygame을 **초기화(준비)** 합니다. 게임 시작 전 준비운동 같은 거예요!
+
+#### 2️⃣ 창(화면) 만들기
+
+```python
+screen = pygame.display.set_mode((800, 600))
+pygame.display.set_caption("My First Pygame")
+```
+- `set_mode((800, 600))` → **가로 800px, 세로 600px** 크기의 창을 만듭니다
+- `set_caption(...)` → 창 **제목**을 "My First Pygame"으로 설정합니다
+
+#### 3️⃣ 색깔 정의
+
+```python
+WHITE = (255, 255, 255)
+BLUE = (0, 0, 255)
+```
+- 색깔은 **(빨강, 초록, 파랑)** 숫자 조합으로 표현합니다 (RGB 방식)
+- `(255, 255, 255)` → 세 색이 모두 최대 → **흰색**
+- `(0, 0, 255)` → 파랑만 최대 → **파란색**
+
+#### 4️⃣ 게임 루프 (핵심!)
+
+```python
+clock = pygame.time.Clock()
+running = True
+
+while running:
+    ...
+```
+게임은 **무한 반복**으로 돌아갑니다. 영화처럼 초당 여러 장의 그림을 빠르게 보여주는 방식이에요. `running = True`인 동안 계속 반복됩니다.
+
+#### 5️⃣ 루프 안 내용
+
+```python
+for event in pygame.event.get():
+    if event.type == pygame.QUIT:
+        running = False
+```
+- `pygame.event.get()` → 사용자가 한 **모든 행동(이벤트)** 을 감지합니다
+- `pygame.QUIT` → 창의 **X 버튼을 눌렀을 때** 발생하는 이벤트
+- `running = False` → 루프를 **탈출**시켜 프로그램 종료로 이어집니다
+
+```python
+screen.fill(WHITE)
+pygame.draw.circle(screen, BLUE, (400, 300), 50)
+pygame.display.flip()
+```
+- `screen.fill(WHITE)` → 화면을 **흰색으로 초기화** (이전 그림 지우기)
+- `draw.circle(screen, BLUE, (400, 300), 50)` → 화면 중앙 **(400, 300) 위치**에 반지름 **50px** 파란 원을 그립니다
+- `display.flip()` → 그린 내용을 **실제 화면에 반영**합니다
+
+```python
+clock.tick()
+```
+- 게임 속도(FPS)를 제어합니다. 현재는 인자가 없어서 **속도 제한 없음**입니다
+
+#### 6️⃣ 종료
+
+```python
+pygame.quit()
+sys.exit()
+```
+- `pygame.quit()` → pygame을 **종료**합니다
+- `sys.exit()` → 프로그램을 **완전히 닫습니다**
+
+#### 전체 흐름 요약
+
+```
+시작 → 창 만들기 → 반복(이벤트 감지 → 화면 그리기) → X 버튼 → 종료
+```
+
+---
+
+## 💬 사용자
+
+> 이 코드에서 화면에 fps가 나오게 하는 코드를 만들어주고 어디에 추가해야하는지도 알려줘
+
+---
+
+## 🤖 답변
+
+### FPS 표시 코드 추가 방법
+
+**① 폰트 초기화** - `clock = pygame.time.Clock()` 바로 아래에 추가:
+```python
+font = pygame.font.SysFont(None, 36)
+```
+
+**② FPS 그리기** - `pygame.draw.circle(...)` 아래에 추가:
+```python
+fps = clock.get_fps()
+fps_text = font.render(f"FPS: {int(fps)}", True, (0, 0, 0))
+screen.blit(fps_text, (10, 10))
+```
+
+#### 최종 완성 코드 (전체)
+
+```python
+import pygame
+import sys
+
+pygame.init()
+screen = pygame.display.set_mode((800, 600))
+pygame.display.set_caption("My First Pygame")
+
+WHITE = (255, 255, 255)
+BLUE = (0, 0, 255)
+
+clock = pygame.time.Clock()
+font = pygame.font.SysFont(None, 36)  # ✅ ① 추가
+
+running = True
+while running:
+    for event in pygame.event.get():
+        if event.type == pygame.QUIT:
+            running = False
+
+    screen.fill(WHITE)
+    pygame.draw.circle(screen, BLUE, (400, 300), 50)
+
+    # ✅ ② 추가
+    fps = clock.get_fps()
+    fps_text = font.render(f"FPS: {int(fps)}", True, (0, 0, 0))
+    screen.blit(fps_text, (10, 10))
+
+    pygame.display.flip()
+    clock.tick(60)  # ✅ 60으로 설정 (없으면 FPS가 0으로 표시됨)
+
+pygame.quit()
+sys.exit()
+```
+
+#### 추가된 코드 설명
+
+| 코드 | 역할 |
+|------|------|
+| `pygame.font.SysFont(None, 36)` | 기본 시스템 폰트, 크기 36으로 폰트 객체 생성 |
+| `clock.get_fps()` | 현재 FPS 값을 숫자로 가져옴 |
+| `font.render(...)` | 텍스트를 **이미지**로 변환 |
+| `screen.blit(fps_text, (10, 10))` | 그 이미지를 화면 **(10, 10) 위치** 왼쪽 상단에 붙여넣기 |
+| `clock.tick(60)` | FPS를 60으로 제한 |
+
+---
+
+## 💬 사용자
+
+> 방금꺼 오류났어 다시만들어줘
+
+---
+
+## 🤖 답변
+
+어떤 오류가 났는지 알 수 있을까요? 오류 메시지를 붙여넣어 주시면 정확히 고칠 수 있어요!
+
+그래도 일단 가장 흔한 오류들을 모두 고친 안전한 버전으로 다시 만들어 드릴게요 👇
+
+```python
+import pygame
+import sys
+
+pygame.init()
+
+screen = pygame.display.set_mode((800, 600))
+pygame.display.set_caption("My First Pygame")
+
+WHITE = (255, 255, 255)
+BLUE = (0, 0, 255)
+BLACK = (0, 0, 0)
+
+clock = pygame.time.Clock()
+
+font = pygame.font.Font(None, 36)
+
+running = True
+while running:
+    for event in pygame.event.get():
+        if event.type == pygame.QUIT:
+            running = False
+
+    screen.fill(WHITE)
+
+    pygame.draw.circle(screen, BLUE, (400, 300), 50)
+
+    fps = str(int(clock.get_fps()))
+    fps_surface = font.render("FPS: " + fps, True, BLACK)
+    screen.blit(fps_surface, (10, 10))
+
+    pygame.display.flip()
+    clock.tick(60)
+
+pygame.quit()
+sys.exit()
+```
+
+#### 이전 코드에서 바뀐 점
+
+| 변경 | 이유 |
+|------|------|
+| `SysFont(None, 36)` → `Font(None, 36)` | `SysFont`는 시스템 환경에 따라 오류날 수 있어서 더 안전한 `Font`로 교체 |
+| `f"FPS: {int(fps)}"` → `"FPS: " + fps` | f-string이 오류나는 환경이 있어서 일반 문자열 연결로 교체 |
+| `BLACK = (0, 0, 0)` | 색상을 변수로 따로 분리해서 가독성 향상 |
+
+오류 메시지 알려주시면 더 정확하게 잡아드릴 수 있어요! 😊
