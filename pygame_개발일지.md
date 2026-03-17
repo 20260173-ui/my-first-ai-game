@@ -1,0 +1,573 @@
+# 🎮 Pygame 피하기 게임 개발일지
+
+> Claude와 함께 단계별로 만든 pygame 게임 전체 대화 기록
+
+---
+
+## 1단계 — 기본 pygame 창 + 파란 원
+
+**Q:** 아래 코드를 바탕으로 화면 곳곳 랜덤한 곳에 파란 원들이 나타나서 점점 커지는 코드를 만들어줘.
+
+```python
+import pygame
+import sys
+pygame.init()
+screen = pygame.display.set_mode((800, 600))
+pygame.display.set_caption("My First Pygame")
+WHITE = (255, 255, 255)
+BLUE = (0, 0, 255)
+BLACK = (0, 0, 0)
+clock = pygame.time.Clock()
+font = pygame.font.Font(None, 36)
+running = True
+while running:
+    for event in pygame.event.get():
+        if event.type == pygame.QUIT:
+            running = False
+    screen.fill(WHITE)
+    pygame.draw.circle(screen, BLUE, (400, 300), 50)
+    fps = str(int(clock.get_fps()))
+    fps_surface = font.render("FPS: " + fps, True, BLACK)
+    screen.blit(fps_surface, (10, 10))
+    pygame.display.flip()
+    clock.tick(60)
+pygame.quit()
+sys.exit()
+```
+
+**A:**
+주요 변경 사항:
+
+**원 생성 (`spawn_circle`)**
+- 0.5초마다 랜덤한 위치에 새 원이 자동 생성
+- 각 원은 랜덤한 최대 반지름(60~150px)과 성장 속도(0.5~2.5)를 가짐
+
+**원 상태 관리 (딕셔너리 리스트)**
+- `x, y` : 위치
+- `radius` : 현재 반지름 (0에서 시작해 점점 커짐)
+- `max_radius` : 최대 반지름
+- `speed` : 프레임마다 커지는 속도
+- `alpha` : 투명도 (최대 크기 도달 후 서서히 사라짐)
+
+**렌더링**
+- `pygame.SRCALPHA`를 사용한 투명도 지원 Surface로 원을 그림
+- 원이 최대 크기에 도달하면 fade out 되어 자연스럽게 사라짐
+
+```python
+import pygame
+import sys
+import random
+
+pygame.init()
+
+WIDTH, HEIGHT = 800, 600
+screen = pygame.display.set_mode((WIDTH, HEIGHT))
+pygame.display.set_caption("Expanding Circles")
+
+WHITE = (255, 255, 255)
+BLACK = (0, 0, 0)
+
+clock = pygame.time.Clock()
+font = pygame.font.Font(None, 36)
+
+circles = []
+
+SPAWN_INTERVAL = 500
+last_spawn_time = 0
+
+def spawn_circle():
+    x = random.randint(50, WIDTH - 50)
+    y = random.randint(50, HEIGHT - 50)
+    max_radius = random.randint(60, 150)
+    growth_speed = random.uniform(0.5, 2.5)
+    return {"x": x, "y": y, "radius": 0, "max_radius": max_radius, "speed": growth_speed, "alpha": 255}
+
+running = True
+while running:
+    dt = clock.tick(60)
+    current_time = pygame.time.get_ticks()
+
+    for event in pygame.event.get():
+        if event.type == pygame.QUIT:
+            running = False
+
+    if current_time - last_spawn_time > SPAWN_INTERVAL:
+        circles.append(spawn_circle())
+        last_spawn_time = current_time
+
+    for circle in circles:
+        if circle["radius"] < circle["max_radius"]:
+            circle["radius"] += circle["speed"]
+        else:
+            circle["alpha"] -= 3
+
+    circles = [c for c in circles if c["alpha"] > 0]
+
+    screen.fill(WHITE)
+
+    for circle in circles:
+        r = int(circle["radius"])
+        if r <= 0:
+            continue
+        surf = pygame.Surface((r * 2, r * 2), pygame.SRCALPHA)
+        alpha = max(0, min(255, int(circle["alpha"])))
+        pygame.draw.circle(surf, (0, 0, 255, alpha), (r, r), r)
+        pygame.draw.circle(surf, (0, 0, 180, alpha), (r, r), r, 2)
+        screen.blit(surf, (circle["x"] - r, circle["y"] - r))
+
+    fps = str(int(clock.get_fps()))
+    fps_surface = font.render("FPS: " + fps, True, BLACK)
+    screen.blit(fps_surface, (10, 10))
+
+    count_surface = font.render(f"Circles: {len(circles)}", True, BLACK)
+    screen.blit(count_surface, (10, 40))
+
+    pygame.display.flip()
+
+pygame.quit()
+sys.exit()
+```
+
+---
+
+## 2단계 — 타이머 추가
+
+**Q:** 타이머도 추가해줘. 시간이 얼마나 지났는지 만드는거야
+
+**A:**
+타이머를 추가했습니다!
+
+**타이머 기능**
+- 프로그램 시작 시 `start_time`을 기록해 경과 시간을 계산
+- 형식: `MM:SS.ss` (분:초.센티초) — 예) `01:23.45`
+- 화면 상단 중앙에 파란 테두리 박스 안에 표시
+
+**디자인**
+- 타이머 전용 폰트(`font_timer`)를 크기 52로 설정
+- 연한 파란 배경 + 파란 테두리의 둥근 박스
+
+```python
+# 추가된 핵심 코드
+start_time = pygame.time.get_ticks()
+font_timer = pygame.font.Font(None, 52)
+
+# 루프 안에서
+elapsed_ms = current_time - start_time
+elapsed_total_s = elapsed_ms // 1000
+minutes = elapsed_total_s // 60
+seconds = elapsed_total_s % 60
+milliseconds = (elapsed_ms % 1000) // 10
+
+timer_str = f"{minutes:02d}:{seconds:02d}.{milliseconds:02d}"
+timer_surface = font_timer.render(timer_str, True, (30, 30, 30))
+timer_rect = timer_surface.get_rect(center=(WIDTH // 2, 30))
+
+padding = 10
+bg_rect = timer_rect.inflate(padding * 2, padding)
+pygame.draw.rect(screen, (220, 230, 255), bg_rect, border_radius=8)
+pygame.draw.rect(screen, (0, 0, 200), bg_rect, 2, border_radius=8)
+screen.blit(timer_surface, timer_rect)
+```
+
+---
+
+## 3단계 — 시간별 난이도 상승
+
+**Q:** 이제 원 크기가 타이머 1초에서 10초까지는 느리게 커지게 해줘. 그때는 나오는 주기도 느리게 해줘. 10초 이후부터는 10초마다 원들이 커지는 속도랑 나오는 주기도 더 빨라지게 해줘.
+
+**A:**
+시간에 따른 난이도 상승 시스템을 추가했습니다!
+
+| 시간 | 레벨 | 생성 주기 | 속도 배율 |
+|------|------|-----------|-----------|
+| 0~10초 | SLOW | 1500ms | x0.40 |
+| 10~20초 | LV 2 | 1370ms | x0.65 |
+| 20~30초 | LV 3 | 1240ms | x0.90 |
+| 30~40초 | LV 4 | 1110ms | x1.15 |
+| 100초+ | LV 11 | 200ms | x2.90 |
+
+```python
+def get_level_params(elapsed_s):
+    if elapsed_s < 10:
+        spawn_interval = 1500
+        speed_mult = 0.4
+        level = 1
+    else:
+        level = min(2 + int((elapsed_s - 10) // 10), 11)
+        extra = level - 1
+        spawn_interval = max(200, 1500 - extra * 130)
+        speed_mult = 0.4 + extra * 0.25
+    return int(spawn_interval), speed_mult, int(level)
+```
+
+**화면 표시 추가**
+- `SLOW` / `LV N` : 현재 단계 (초록→주황→빨강으로 색상 변화)
+- `next: X.Xs` : 다음 레벨까지 남은 시간
+- `Spawn / Speed` : 실시간 수치 확인
+
+---
+
+## 4단계 — 방향키로 움직이는 삼각형
+
+**Q:** 이제 그 코드에 방향키 입력을 추가해줘. 위/아래/좌/우 키를 누르면 그 키의 방향에 맞춰 5픽셀씩 움직이는 삼각형을 만들어줘.
+
+**A:**
+삼각형 플레이어를 추가했습니다!
+
+**삼각형 동작**
+- 방향키를 누르고 있는 동안 프레임마다 5픽셀씩 연속 이동
+- 마지막으로 누른 방향으로 삼각형이 회전해서 진행 방향을 표시
+- 화면 끝에 닿으면 더 이상 나가지 않도록 경계 처리
+
+```python
+TRIANGLE_SPEED = 5
+TRIANGLE_SIZE  = 20
+triangle_x     = float(WIDTH  // 2)
+triangle_y     = float(HEIGHT // 2)
+triangle_dir   = 0  # 0=위, 1=오른쪽, 2=아래, 3=왼쪽
+
+def get_triangle_points(x, y, direction, size):
+    if direction == 0:
+        return [(x, y - size), (x - size, y + size), (x + size, y + size)]
+    elif direction == 1:
+        return [(x + size, y), (x - size, y - size), (x - size, y + size)]
+    elif direction == 2:
+        return [(x, y + size), (x - size, y - size), (x + size, y - size)]
+    else:
+        return [(x - size, y), (x + size, y - size), (x + size, y + size)]
+
+# 루프 안에서
+keys = pygame.key.get_pressed()
+if keys[pygame.K_UP]:    triangle_y -= TRIANGLE_SPEED; triangle_dir = 0
+if keys[pygame.K_RIGHT]: triangle_x += TRIANGLE_SPEED; triangle_dir = 1
+if keys[pygame.K_DOWN]:  triangle_y += TRIANGLE_SPEED; triangle_dir = 2
+if keys[pygame.K_LEFT]:  triangle_x -= TRIANGLE_SPEED; triangle_dir = 3
+```
+
+---
+
+## 5단계 — 충돌 감지 & GAME OVER & 안전 생성 구역
+
+**Q:** 이제 그 삼각형이 원에 닿으면 GAME OVER라는 메세지가 나오며 모든 코드를 멈추는 코드도 만들어줘. 추가로 원이 생성되는 위치가 삼각형이 현재 있는 위치에 나오지는 않게 만들어줘. 삼각형이 1초전에 있던 위치들은 나와도 괜찮아.
+
+**A:**
+세 가지 기능을 추가했습니다!
+
+**충돌 감지 (`check_collision`)**
+- 삼각형 중심점과 원의 중심 사이 거리를 `math.hypot`으로 계산
+- 거리가 `원 반지름 + 삼각형 내접원 반지름(14px)` 보다 작으면 충돌
+
+**GAME OVER**
+- 충돌 시 즉시 반투명 검정 오버레이 표시
+- 생존 시간(`MM:SS.ss`)을 화면 중앙에 표시
+- `ESC` 키를 누르면 종료
+
+**안전 생성 구역**
+- 원 생성 시 현재 삼각형 위치와 최소 거리 확인
+- 너무 가까우면 최대 50번 재시도
+
+```python
+from collections import deque
+import math
+
+TRIANGLE_HIT_R = 14
+pos_history = deque(maxlen=60)  # 1초 = 60프레임
+
+def check_collision(tx, ty, circle):
+    return math.hypot(tx - circle["x"], ty - circle["y"]) < circle["radius"] + TRIANGLE_HIT_R
+
+def spawn_circle(speed_mult, safe_pos):
+    SAFE_DIST = TRIANGLE_SIZE + 30
+    for _ in range(50):
+        x = random.randint(50, WIDTH  - 50)
+        y = random.randint(50, HEIGHT - 50)
+        if math.hypot(x - safe_pos[0], y - safe_pos[1]) >= SAFE_DIST:
+            break
+    max_radius   = random.randint(60, 150)
+    growth_speed = random.uniform(0.5, 2.5) * speed_mult
+    return {"x": x, "y": y, "radius": 0,
+            "max_radius": max_radius, "speed": growth_speed, "alpha": 255}
+
+def draw_game_over(surface, time_str):
+    overlay = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
+    overlay.fill((0, 0, 0, 160))
+    surface.blit(overlay, (0, 0))
+    go_surf = font_go.render("GAME OVER", True, (255, 60, 60))
+    surface.blit(go_surf, go_surf.get_rect(center=(WIDTH // 2, HEIGHT // 2 - 60)))
+    time_surf = font_sub.render(f"생존 시간: {time_str}", True, WHITE)
+    surface.blit(time_surf, time_surf.get_rect(center=(WIDTH // 2, HEIGHT // 2 + 20)))
+```
+
+---
+
+## 6단계 — 원 생성 1초 전 예고 점
+
+**Q:** 이제 원이 나올 위치에 1초전에 예고를 해주는 검은색 점도 추가해줘.
+
+**A:**
+예고 점 시스템을 추가했습니다!
+
+**핵심 구조 변경**
+- 기존에는 원을 바로 생성했지만, `pending_circles` 리스트에 1초 후 생성될 위치를 먼저 등록
+- `spawn_at` 시각이 되면 대기 목록에서 실제 `circles`로 이동
+
+**예고 점 애니메이션**
+- 남은 시간 비율(`progress`)에 따라 점점 커지고 진해짐
+- 처음엔 작고 흐릿하게(반지름 2px, 투명도 80) → 생성 직전엔 크고 선명하게(반지름 8px, 투명도 255)
+
+```python
+WARN_DELAY = 1000  # ms
+pending_circles = []  # {"x", "y", "spawn_at", "speed_mult"}
+
+# 예고점 예약
+if current_time - last_spawn_time > spawn_interval:
+    px, py = pick_position((triangle_x, triangle_y))
+    pending_circles.append({
+        "x": px, "y": py,
+        "spawn_at": current_time + WARN_DELAY,
+        "speed_mult": speed_mult
+    })
+    last_spawn_time = current_time
+
+# 예고 점 그리기
+for p in pending_circles:
+    time_left  = p["spawn_at"] - current_time
+    progress   = 1.0 - time_left / WARN_DELAY
+    dot_radius = max(2, int(4 + progress * 4))
+    dot_alpha  = int(80 + progress * 175)
+    dot_surf   = pygame.Surface((dot_radius * 2, dot_radius * 2), pygame.SRCALPHA)
+    pygame.draw.circle(dot_surf, (0, 0, 0, dot_alpha),
+                       (dot_radius, dot_radius), dot_radius)
+    screen.blit(dot_surf, (int(p["x"]) - dot_radius, int(p["y"]) - dot_radius))
+```
+
+---
+
+## 최종 완성 코드
+
+```python
+import pygame
+import sys
+import random
+import math
+from collections import deque
+
+pygame.init()
+
+WIDTH, HEIGHT = 800, 600
+screen = pygame.display.set_mode((WIDTH, HEIGHT))
+pygame.display.set_caption("Expanding Circles")
+
+WHITE  = (255, 255, 255)
+BLACK  = (0,   0,   0  )
+RED    = (220, 50,  50 )
+
+clock      = pygame.time.Clock()
+font       = pygame.font.Font(None, 36)
+font_timer = pygame.font.Font(None, 52)
+font_level = pygame.font.Font(None, 30)
+font_go    = pygame.font.Font(None, 100)
+font_sub   = pygame.font.Font(None, 42)
+
+circles         = []
+pending_circles = []
+last_spawn_time = 0
+WARN_DELAY      = 1000
+
+start_time = pygame.time.get_ticks()
+
+TRIANGLE_SPEED = 5
+TRIANGLE_SIZE  = 20
+TRIANGLE_HIT_R = 14
+triangle_x     = float(WIDTH  // 2)
+triangle_y     = float(HEIGHT // 2)
+triangle_dir   = 0
+
+pos_history    = deque(maxlen=60)
+game_over      = False
+final_time_str = ""
+
+
+def get_triangle_points(x, y, direction, size):
+    if direction == 0:
+        return [(x, y - size), (x - size, y + size), (x + size, y + size)]
+    elif direction == 1:
+        return [(x + size, y), (x - size, y - size), (x - size, y + size)]
+    elif direction == 2:
+        return [(x, y + size), (x - size, y - size), (x + size, y - size)]
+    else:
+        return [(x - size, y), (x + size, y - size), (x + size, y + size)]
+
+
+def get_level_params(elapsed_s):
+    if elapsed_s < 10:
+        return 1500, 0.4, 1
+    level = min(2 + int((elapsed_s - 10) // 10), 11)
+    extra = level - 1
+    return max(200, 1500 - extra * 130), 0.4 + extra * 0.25, int(level)
+
+
+def pick_position(safe_pos):
+    SAFE_DIST = TRIANGLE_SIZE + 30
+    for _ in range(50):
+        x = random.randint(50, WIDTH  - 50)
+        y = random.randint(50, HEIGHT - 50)
+        if math.hypot(x - safe_pos[0], y - safe_pos[1]) >= SAFE_DIST:
+            return x, y
+    return x, y
+
+
+def make_circle_from_pending(p, speed_mult):
+    max_radius   = random.randint(60, 150)
+    growth_speed = random.uniform(0.5, 2.5) * speed_mult
+    return {"x": p["x"], "y": p["y"], "radius": 0,
+            "max_radius": max_radius, "speed": growth_speed, "alpha": 255}
+
+
+def check_collision(tx, ty, circle):
+    return math.hypot(tx - circle["x"], ty - circle["y"]) < circle["radius"] + TRIANGLE_HIT_R
+
+
+def draw_game_over(surface, time_str):
+    overlay = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
+    overlay.fill((0, 0, 0, 160))
+    surface.blit(overlay, (0, 0))
+    go_surf = font_go.render("GAME OVER", True, (255, 60, 60))
+    surface.blit(go_surf, go_surf.get_rect(center=(WIDTH // 2, HEIGHT // 2 - 60)))
+    time_surf = font_sub.render(f"생존 시간: {time_str}", True, WHITE)
+    surface.blit(time_surf, time_surf.get_rect(center=(WIDTH // 2, HEIGHT // 2 + 20)))
+    quit_surf = font_level.render("ESC 키를 눌러 종료", True, (200, 200, 200))
+    surface.blit(quit_surf, quit_surf.get_rect(center=(WIDTH // 2, HEIGHT // 2 + 70)))
+
+
+running = True
+while running:
+    dt           = clock.tick(60)
+    current_time = pygame.time.get_ticks()
+
+    for event in pygame.event.get():
+        if event.type == pygame.QUIT:
+            running = False
+        if event.type == pygame.KEYDOWN:
+            if event.key == pygame.K_ESCAPE and game_over:
+                running = False
+
+    if game_over:
+        draw_game_over(screen, final_time_str)
+        pygame.display.flip()
+        continue
+
+    keys = pygame.key.get_pressed()
+    if keys[pygame.K_UP]:    triangle_y -= TRIANGLE_SPEED; triangle_dir = 0
+    if keys[pygame.K_RIGHT]: triangle_x += TRIANGLE_SPEED; triangle_dir = 1
+    if keys[pygame.K_DOWN]:  triangle_y += TRIANGLE_SPEED; triangle_dir = 2
+    if keys[pygame.K_LEFT]:  triangle_x -= TRIANGLE_SPEED; triangle_dir = 3
+
+    triangle_x = max(TRIANGLE_SIZE, min(WIDTH  - TRIANGLE_SIZE, triangle_x))
+    triangle_y = max(TRIANGLE_SIZE, min(HEIGHT - TRIANGLE_SIZE, triangle_y))
+    pos_history.append((triangle_x, triangle_y))
+
+    elapsed_ms = current_time - start_time
+    elapsed_s  = elapsed_ms / 1000.0
+    spawn_interval, speed_mult, level = get_level_params(elapsed_s)
+
+    if current_time - last_spawn_time > spawn_interval:
+        px, py = pick_position((triangle_x, triangle_y))
+        pending_circles.append({
+            "x": px, "y": py,
+            "spawn_at": current_time + WARN_DELAY,
+            "speed_mult": speed_mult
+        })
+        last_spawn_time = current_time
+
+    still_pending = []
+    for p in pending_circles:
+        if current_time >= p["spawn_at"]:
+            circles.append(make_circle_from_pending(p, p["speed_mult"]))
+        else:
+            still_pending.append(p)
+    pending_circles = still_pending
+
+    for circle in circles:
+        if circle["radius"] < circle["max_radius"]:
+            circle["radius"] += circle["speed"]
+        else:
+            circle["alpha"] -= 3
+    circles = [c for c in circles if c["alpha"] > 0]
+
+    for circle in circles:
+        if circle["radius"] > 0 and check_collision(triangle_x, triangle_y, circle):
+            game_over = True
+            total_s = int(elapsed_s)
+            final_time_str = (
+                f"{total_s // 60:02d}:{total_s % 60:02d}"
+                f".{(elapsed_ms % 1000) // 10:02d}"
+            )
+            break
+
+    screen.fill(WHITE)
+
+    for circle in circles:
+        r = int(circle["radius"])
+        if r <= 0:
+            continue
+        surf  = pygame.Surface((r * 2, r * 2), pygame.SRCALPHA)
+        alpha = max(0, min(255, int(circle["alpha"])))
+        pygame.draw.circle(surf, (0, 0, 255, alpha), (r, r), r)
+        pygame.draw.circle(surf, (0, 0, 180, alpha), (r, r), r, 2)
+        screen.blit(surf, (circle["x"] - r, circle["y"] - r))
+
+    for p in pending_circles:
+        time_left  = p["spawn_at"] - current_time
+        progress   = 1.0 - time_left / WARN_DELAY
+        dot_radius = max(2, int(4 + progress * 4))
+        dot_alpha  = int(80 + progress * 175)
+        dot_surf   = pygame.Surface((dot_radius * 2, dot_radius * 2), pygame.SRCALPHA)
+        pygame.draw.circle(dot_surf, (0, 0, 0, dot_alpha),
+                           (dot_radius, dot_radius), dot_radius)
+        screen.blit(dot_surf, (int(p["x"]) - dot_radius, int(p["y"]) - dot_radius))
+
+    pts = get_triangle_points(triangle_x, triangle_y, triangle_dir, TRIANGLE_SIZE)
+    pygame.draw.polygon(screen, RED,         pts)
+    pygame.draw.polygon(screen, (140, 0, 0), pts, 2)
+
+    screen.blit(font.render("FPS: " + str(int(clock.get_fps())), True, BLACK), (10, 10))
+    screen.blit(font.render(f"Circles: {len(circles)}", True, BLACK), (10, 40))
+
+    if elapsed_s < 10:
+        next_level_in, level_color, level_label = 10 - elapsed_s, (0, 150, 0), "SLOW"
+    else:
+        next_level_in = 10 - ((elapsed_s - 10) % 10)
+        level_color   = (180, 60, 0) if level < 6 else (200, 0, 0)
+        level_label   = f"LV {level}"
+
+    screen.blit(font.render(f"{level_label}  (next: {next_level_in:.1f}s)", True, level_color), (10, 70))
+    screen.blit(font_level.render(f"Spawn: {spawn_interval}ms  Speed: x{speed_mult:.2f}", True, (80, 80, 80)), (10, 100))
+
+    elapsed_total_s = int(elapsed_s)
+    timer_str       = f"{elapsed_total_s // 60:02d}:{elapsed_total_s % 60:02d}.{(elapsed_ms % 1000) // 10:02d}"
+    timer_surface   = font_timer.render(timer_str, True, (30, 30, 30))
+    timer_rect      = timer_surface.get_rect(center=(WIDTH // 2, 30))
+    bg_rect         = timer_rect.inflate(20, 10)
+    pygame.draw.rect(screen, (220, 230, 255), bg_rect, border_radius=8)
+    pygame.draw.rect(screen, (0, 0, 200),     bg_rect, 2, border_radius=8)
+    screen.blit(timer_surface, timer_rect)
+
+    pygame.display.flip()
+
+pygame.quit()
+sys.exit()
+```
+
+---
+
+## 개발 단계 요약
+
+| 단계 | 추가 기능 |
+|------|-----------|
+| 1단계 | 랜덤 위치에서 점점 커지는 파란 원 |
+| 2단계 | MM:SS.cs 형식 경과 시간 타이머 |
+| 3단계 | 10초마다 레벨업 — 속도·생성주기 상승 |
+| 4단계 | 방향키로 조작하는 빨간 삼각형 플레이어 |
+| 5단계 | 충돌 감지, GAME OVER 화면, 안전 생성 구역 |
+| 6단계 | 원 생성 1초 전 예고 점 (점점 커지고 진해짐) |
