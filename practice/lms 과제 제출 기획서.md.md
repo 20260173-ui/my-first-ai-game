@@ -1,7 +1,7 @@
 # 게임 기획서: 컬러 블링커 (Color Blinker)
 
 ## 1. 기본 정보
-- **게임 제목**: 컬러 블링커 (Color Blinker)
+- **게임 제목**: 컬러 블링커 (Color Blinker) (3가지 색의 적들을 파란색 플레이어가 점멸을 사용하며 피하는 게임이기 때문)
 - **장르**: 캐주얼 아케이드 회피 게임 (Lateral Dodger)
 - **기반 템플릿**: Pygame Dodger Template
 - **개발 환경**: Python / Pygame
