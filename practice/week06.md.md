@@ -1,5 +1,6 @@
 # 6주차 실습 기록
 
+
 ## 사용한 에셋
 
 - **이미지** (파일명: SpaceRage 파일 안에 있는 spritesheet, 출처: https://ravenmore.itch.io/space-shooter-assets-space-rage)
