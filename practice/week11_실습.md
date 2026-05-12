@@ -9,6 +9,7 @@
 
 ---
 
+
 ## `resource_path()`를 써야 하는 이유
 
 PyInstaller는 임시폴더에 압축을 풀면서 그 경로를 `sys._MEIPASS` 변수에 저장해둠.  
